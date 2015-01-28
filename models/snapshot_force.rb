@@ -6,8 +6,7 @@ class SnapshotForce < Jenkins::Tasks::BuildWrapper
 
   def setup(build, launcher, listener)
     pom = build.workspace.native.child 'pom.xml'
-    xmlstring = pom.read_to_string
-    doc = REXML::Document.new xmlstring
+    doc = REXML::Document.new pom.read_to_string
     listener.info "Adding 'SNAPSHOT' to version declared in pom"
     doc.root.elements['version'].text += '-SNAPSHOT'
     pom.write(doc.to_s, 'UTF-8')
