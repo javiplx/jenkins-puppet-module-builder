@@ -6,6 +6,8 @@ class SnapshotForce < Jenkins::Tasks::BuildWrapper
 
   def setup(build, launcher, listener)
 
+    return unless build.native.project.is_a?(Java::HudsonMaven::MavenModuleSet)
+
     outstr = StringIO.new
     launcher.execute('git', 'describe', {:out => outstr, :chdir => build.workspace} )
     return if outstr.string.chomp.split('-').length == 1
