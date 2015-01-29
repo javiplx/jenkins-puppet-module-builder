@@ -1,3 +1,4 @@
+require 'stringio'
 require 'rexml/document'
 
 class SnapshotForce < Jenkins::Tasks::BuildWrapper
