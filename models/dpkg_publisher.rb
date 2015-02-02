@@ -7,10 +7,14 @@ class DpkgPublisher < Jenkins::Tasks::Publisher
   display_name '(FON) Publish maven dpkg artifacts'
 
   def perform(build, launcher, listener)
+
     artifacts = build.native.maven_artifacts
     return if artifacts.nil?
+
     record = artifacts.module_records.first
     dpkg = record.attachedArtifacts.first
+    return if dpkg.nil?
+
     file = dpkg.getFile(build.native.getModuleLastBuilds.values.first)
     FileUtils.cp file.canonical_path , "/tmp"
     unless system( "update_repo.py --force /tmp/#{file.name}" )
