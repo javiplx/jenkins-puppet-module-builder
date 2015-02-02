@@ -67,6 +67,14 @@ class PuppetModulePublisher < Jenkins::Tasks::Publisher
   display_name "(FON) Publish puppet module"
 
   def perform(build, launcher, listener)
+
+    remote_head = StringIO.new
+    launcher.execute('git', 'ls-remote', 'origin' ,'HEAD', {:out => remote_head, :chdir => build.workspace} )
+    if remote_head.string.chomp.split.first != build.native.environment(listener)['GIT_COMMIT']
+      listener.warn "Skip publication, not in remote HEAD"
+      return
+    end
+
     build.native.artifacts.each do |artifact|
       if artifact.file_name.start_with?('fon-') &&
             artifact.file_name.end_with?('.tar.gz')

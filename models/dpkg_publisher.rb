@@ -8,6 +8,13 @@ class DpkgPublisher < Jenkins::Tasks::Publisher
 
   def perform(build, launcher, listener)
 
+    remote_head = StringIO.new
+    launcher.execute('git', 'ls-remote', 'origin' ,'HEAD', {:out => remote_head, :chdir => build.workspace} )
+    if remote_head.string.split.first != build.native.environment(listener)['GIT_COMMIT']
+      listener.warn "Skip publication, not in remote HEAD"
+      return
+    end
+
     artifacts = build.native.maven_artifacts
     return if artifacts.nil?
 
