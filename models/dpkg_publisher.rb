@@ -2,6 +2,8 @@ require 'fileutils'
 
 class DpkgPublisher < Jenkins::Tasks::Publisher
 
+  java_import Java.hudson.model.Result
+
   display_name '(FON) Publish debian packages'
 
   def perform(build, launcher, listener)
@@ -10,7 +12,10 @@ class DpkgPublisher < Jenkins::Tasks::Publisher
     dpkg = record.attachedArtifacts.first
     file = dpkg.getFile(build.native.getModuleLastBuilds.values.first)
     FileUtils.cp file.canonical_path , "/tmp"
-    system( "update_repo.py --force /tmp/#{file.name}" )
+    unless system( "update_repo.py --force /tmp/#{file.name}" )
+      listener.error "Cannot publish #{file.name}"
+      build.native.result = Result.fromString 'FAILURE'
+    end
   end
 
 end
