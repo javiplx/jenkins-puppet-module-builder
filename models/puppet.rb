@@ -1,3 +1,4 @@
+require 'fileutils'
 require 'pathname'
 
 class PuppetModuleBuilder < Jenkins::Tasks::Builder
@@ -52,6 +53,23 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
       build.native.result = Result.fromString 'FAILURE'
     end
 
+  end
+
+end
+
+class PuppetModulePublisher < Jenkins::Tasks::Publisher
+
+  java_import Java.hudson.model.Result
+
+  display_name "(FON) Publish puppet module"
+
+  def perform(build, launcher, listener)
+    build.native.artifacts.each do |artifact|
+      if artifact.file_name.start_with?('fon-') &&
+            artifact.file_name.end_with?('.tar.gz')
+        FileUtils.cp artifact.file.canonical_path, '/var/lib/puppet-library'
+      end
+    end
   end
 
 end
