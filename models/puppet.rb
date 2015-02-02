@@ -15,8 +15,8 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
     if first = env_vars['GIT_PREVIOUS_SUCCESSFUL_COMMIT'] || env_vars['GIT_PREVIOUS_COMMIT']
       last = env_vars['GIT_COMMIT']
       commit_list = StringIO.new
-      launcher.execute('git', 'log', '--oneline' ,"#{first}..${last}", '--', 'src/puppet', {:out => commit_list} )
-      if commit_list.string.lines.empty
+      launcher.execute('git', 'log', '--oneline' ,"#{first}..#{last}", '--', 'src/puppet', {:out => commit_list, :chdir => build.workspace} )
+      if commit_list.string.lines.to_a.empty?
         listener.info "No new commits under 'src/puppet', skip module build"
         return
       end
