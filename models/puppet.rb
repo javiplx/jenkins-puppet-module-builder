@@ -22,15 +22,18 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
       end
     end
 
-    # Tree cleanup
-    launcher.execute('rm', '-rf', 'pkg', '"="', 'Rakefile', 'spec', {:chdir => puppetdir} )
 
     # Run tests
-    rc = launcher.execute('rake', 'test', {:chdir => puppetdir} )
-    if rc != 0
-      listener.warning "Errors on rspec examples"
-      build.native.result = Result.fromString 'UNSTABLE'
+    if build.native.project.is_a? Java::HudsonMaven::MavenModuleSet
+      rc = launcher.execute('rake', 'test', {:chdir => puppetdir} )
+      if rc != 0
+        listener.warning "Errors on rspec examples"
+        build.native.result = Result.fromString 'UNSTABLE'
+      end
     end
+
+    # Tree cleanup
+    launcher.execute('rm', '-rf', 'pkg', '"="', 'Rakefile', 'spec', {:chdir => puppetdir} )
 
     # Build module
     build_info = StringIO.new
