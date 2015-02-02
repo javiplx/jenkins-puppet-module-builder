@@ -17,7 +17,7 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
       commit_list = StringIO.new
       launcher.execute('git', 'log', '--oneline' ,"#{first}..${last}", '--', 'src/puppet', {:out => commit_list} )
       if commit_list.string.lines.empty
-        listener "No new commits under 'src/puppet', skip module build"
+        listener.info "No new commits under 'src/puppet', skip module build"
         return
       end
     end
