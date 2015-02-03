@@ -12,6 +12,15 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
     env_vars = build.native.environment listener
     puppetdir = build.workspace + 'src' + 'puppet'
 
+    # Run tests
+    unless build.native.project.is_a? Java::HudsonMaven::MavenModuleSet
+      rc = launcher.execute('rake', 'test', {:chdir => puppetdir} )
+      if rc != 0
+        listener.warning "Errors on rspec examples"
+        build.native.result = Result.fromString 'UNSTABLE'
+      end
+    end
+
     if first = env_vars['GIT_PREVIOUS_SUCCESSFUL_COMMIT'] || env_vars['GIT_PREVIOUS_COMMIT']
       last = env_vars['GIT_COMMIT']
       commit_list = StringIO.new
@@ -22,22 +31,12 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
       end
     end
 
-
-    # Run tests
-    if build.native.project.is_a? Java::HudsonMaven::MavenModuleSet
-      rc = launcher.execute('rake', 'test', {:chdir => puppetdir} )
-      if rc != 0
-        listener.warning "Errors on rspec examples"
-        build.native.result = Result.fromString 'UNSTABLE'
-      end
-    end
-
     # Tree cleanup
+    launcher.execute('rake', 'spec_clean', {:chdir => puppetdir} )
     launcher.execute('rm', '-rf', 'pkg', '"="', 'Rakefile', 'spec', {:chdir => puppetdir} )
 
     # Build module
     build_info = StringIO.new
-    launcher.execute('rake', 'spec_clean', {:chdir => puppetdir} )
     rc = launcher.execute('puppet', 'module' , 'build', {:out => build_info, :chdir => puppetdir} )
     if rc != 0
       build_line = build_info.string.lines.find{ |l| l.start_with? 'Module built: ' }.chomp.split
@@ -52,7 +51,7 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
 
       listener.info "Built puppet module #{module_file}"
     else
-      listener.error "Cannot build puppet module"
+      listener.error "Cannot build puppet module\n#{build_info.string}"
       build.native.result = Result.fromString 'FAILURE'
     end
 
