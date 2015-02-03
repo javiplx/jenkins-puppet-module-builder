@@ -46,21 +46,22 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
     build_info = StringIO.new
     rc = launcher.execute('puppet', 'module' , 'build', {:out => build_info, :chdir => puppetdir} )
     if rc != 0
-      build_line = build_info.string.lines.find{ |l| l.start_with? 'Module built: ' }.chomp.split
-
-      module_file = Pathname.new build_line.last
-      workspace = Pathname.new env_vars['WORKSPACE']
-
-      artifact_list = { module_file.basename.to_s => module_file.relative_path_from(workspace).to_s }
-
-      artifact_manager = build.native.artifact_manager
-      artifact_manager.archive(build.workspace.native, launcher.native, listener.native, artifact_list)
-
-      listener.info "Built puppet module #{module_file}"
-    else
       listener.error "Cannot build puppet module\n#{build_info.string}"
       build.native.result = Result.fromString 'FAILURE'
+      return
     end
+
+    build_line = build_info.string.lines.find{ |l| l.start_with? 'Module built: ' }.chomp.split
+
+    module_file = Pathname.new build_line.last
+    workspace = Pathname.new env_vars['WORKSPACE']
+
+    artifact_list = { module_file.basename.to_s => module_file.relative_path_from(workspace).to_s }
+
+    artifact_manager = build.native.artifact_manager
+    artifact_manager.archive(build.workspace.native, launcher.native, listener.native, artifact_list)
+
+    listener.info "Built puppet module #{module_file}"
 
   end
 
@@ -77,7 +78,9 @@ class PuppetModulePublisher < Jenkins::Tasks::Publisher
     build.native.artifacts.each do |artifact|
       if artifact.file_name.start_with?('fon-') &&
             artifact.file_name.end_with?('.tar.gz')
+        listener.info "Publishing puppet module #{artifact.file.name}"
         FileUtils.cp artifact.file.canonical_path, '/var/lib/puppet-library'
+        true
       end
     end || listener.warn("No puppet module to publish")
   end
