@@ -21,12 +21,19 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
       end
     end
 
+    remote_head = StringIO.new
+    launcher.execute('git', 'ls-remote', 'origin' ,'HEAD', {:out => remote_head, :chdir => build.workspace} )
+    if remote_head.string.chomp.split.first != build.native.environment(listener)['GIT_COMMIT']
+      listener.warn "Skip publication, not in remote HEAD"
+      return
+    end
+
     if first = env_vars['GIT_PREVIOUS_SUCCESSFUL_COMMIT'] || env_vars['GIT_PREVIOUS_COMMIT']
       last = env_vars['GIT_COMMIT']
       commit_list = StringIO.new
       launcher.execute('git', 'log', '--oneline' ,"#{first}..#{last}", '--', 'src/puppet', {:out => commit_list, :chdir => build.workspace} )
       if commit_list.string.lines.to_a.empty?
-        listener.info "No new commits under 'src/puppet', skip module build"
+        listener.warn "No new commits under 'src/puppet', skip module build"
         return
       end
     end
@@ -67,19 +74,12 @@ class PuppetModulePublisher < Jenkins::Tasks::Publisher
 
   def perform(build, launcher, listener)
 
-    remote_head = StringIO.new
-    launcher.execute('git', 'ls-remote', 'origin' ,'HEAD', {:out => remote_head, :chdir => build.workspace} )
-    if remote_head.string.chomp.split.first != build.native.environment(listener)['GIT_COMMIT']
-      listener.warn "Skip publication, not in remote HEAD"
-      return
-    end
-
     build.native.artifacts.each do |artifact|
       if artifact.file_name.start_with?('fon-') &&
             artifact.file_name.end_with?('.tar.gz')
         FileUtils.cp artifact.file.canonical_path, '/var/lib/puppet-library'
       end
-    end
+    end || listener.warn("No puppet module to publish")
   end
 
 end
