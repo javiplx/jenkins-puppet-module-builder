@@ -75,6 +75,8 @@ class PuppetModulePublisher < Jenkins::Tasks::Publisher
 
   def perform(build, launcher, listener)
 
+    listener.warn("No puppet module to publish") if build.native.artifacts.empty?
+
     build.native.artifacts.each do |artifact|
       if artifact.file_name.start_with?('fon-') &&
             artifact.file_name.end_with?('.tar.gz')
@@ -82,7 +84,7 @@ class PuppetModulePublisher < Jenkins::Tasks::Publisher
         FileUtils.cp artifact.file.canonical_path, '/var/lib/puppet-library'
         true
       end
-    end || listener.warn("No puppet module to publish")
+    end
   end
 
 end
