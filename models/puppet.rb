@@ -77,6 +77,11 @@ class PuppetModulePublisher < Jenkins::Tasks::Publisher
 
     listener.warn("No puppet module to publish") if build.native.artifacts.empty?
 
+    if build.native.result.worse_than? Result.fromString('SUCCESS')
+      listener.warn "Skip puppet module publication for non-stable build"
+      return
+    end
+
     build.native.artifacts.each do |artifact|
       if artifact.file_name.start_with?('fon-') &&
             artifact.file_name.end_with?('.tar.gz')
