@@ -4,6 +4,7 @@ require 'pathname'
 class PuppetModuleBuilder < Jenkins::Tasks::Builder
 
   java_import Java.hudson.model.Result
+  java_import Java.hudson.plugins.git.extensions.impl.RelativeTargetDirectory
 
   display_name "(FON) Build puppet module"
 
@@ -16,7 +17,7 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
   def perform(build, launcher, listener)
 
     env_vars = build.native.environment listener
-    puppetdir = build.workspace + puppetsrc
+    puppetdir = topdir(build) + puppetsrc
 
     # Run tests
     unless build.native.project.is_a? Java::HudsonMaven::MavenModuleSet
@@ -69,6 +70,15 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
   end
 
   describe_as Java.hudson.tasks.Builder, :with => DescriptorImpl
+
+  def topdir( build )
+    target = build.native.project.scm.extensions.get RelativeTargetDirectory.java_class
+    if target && local_branch = target.relative_target_dir
+      build.workspace + local_branch
+    else
+      build.workspace
+    end
+  end
 
 end
 
