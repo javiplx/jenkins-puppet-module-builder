@@ -7,10 +7,16 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
 
   display_name "(FON) Build puppet module"
 
+  attr_reader :puppetsrc
+
+  def initialize(opts)
+    @puppetsrc = opts['puppetsrc']
+  end
+
   def perform(build, launcher, listener)
 
     env_vars = build.native.environment listener
-    puppetdir = build.workspace + 'src' + 'puppet'
+    puppetdir = build.workspace + puppetsrc
 
     # Run tests
     unless build.native.project.is_a? Java::HudsonMaven::MavenModuleSet
@@ -64,6 +70,12 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
     listener.info "Built puppet module #{module_file}"
 
   end
+
+  class DescriptorImpl < Jenkins::Model::DefaultDescriptor
+    attr_accessor :puppetsrc
+  end
+
+  describe_as Java.hudson.tasks.Builder, :with => DescriptorImpl
 
 end
 

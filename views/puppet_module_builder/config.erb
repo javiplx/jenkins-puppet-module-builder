@@ -1,0 +1,8 @@
+<%
+  f = taglib("/lib/form")
+  f.block do
+    f.entry :title => 'Puppet module directory', :field => 'puppetsrc' do
+      f.textbox :default => "#{descriptor.puppetsrc || 'src/puppet'}"
+    end
+  end
+%>
