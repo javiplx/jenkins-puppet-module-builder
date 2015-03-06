@@ -16,7 +16,9 @@ class SnapshotForce < Jenkins::Tasks::BuildWrapper
     pom = build.workspace.native.child 'pom.xml'
     doc = REXML::Document.new pom.read_to_string
     listener.info "Adding 'SNAPSHOT' to version declared in pom"
-    doc.root.elements['version'].text += '-SNAPSHOT'
+    version = doc.root.elements['version'].text.split('.').collect{ |v| v.to_i }
+    version[2] += 1
+    doc.root.elements['version'].text = "#{version.join('.')}-SNAPSHOT"
     pom.write(doc.to_s, 'UTF-8')
 
   end
