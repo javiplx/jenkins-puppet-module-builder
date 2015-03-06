@@ -1,7 +1,10 @@
+require 'jenkins/utils'
+
 require 'fileutils'
 require 'pathname'
 
 class PuppetModuleBuilder < Jenkins::Tasks::Builder
+  include Jenkins::Utils
 
   java_import Java.hudson.model.Result
   java_import Java.hudson.plugins.git.extensions.impl.RelativeTargetDirectory
@@ -31,7 +34,7 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
     if first = env_vars['GIT_PREVIOUS_SUCCESSFUL_COMMIT'] || env_vars['GIT_PREVIOUS_COMMIT']
       last = env_vars['GIT_COMMIT']
       commit_list = StringIO.new
-      launcher.execute('git', 'log', '--oneline' ,"#{first}..#{last}", '--', 'src/puppet', {:out => commit_list, :chdir => build.workspace} )
+      launcher.execute('git', 'log', '--oneline' ,"#{first}..#{last}", '--', 'src/puppet', {:out => commit_list, :chdir => topdir(build)} )
       if commit_list.string.lines.to_a.empty?
         listener.warn "No new commits under 'src/puppet', skip module build"
         return
@@ -59,7 +62,7 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
     artifact_list = { module_file.basename.to_s => module_file.relative_path_from(workspace).to_s }
 
     artifact_manager = build.native.artifact_manager
-    artifact_manager.archive(build.workspace.native, launcher.native, listener.native, artifact_list)
+    artifact_manager.archive(topdir(build).native, launcher.native, listener.native, artifact_list)
 
     listener.info "Built puppet module #{module_file}"
 
@@ -70,15 +73,6 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
   end
 
   describe_as Java.hudson.tasks.Builder, :with => DescriptorImpl
-
-  def topdir( build )
-    target = build.native.project.scm.extensions.get RelativeTargetDirectory.java_class
-    if target && local_branch = target.relative_target_dir
-      build.workspace + local_branch
-    else
-      build.workspace
-    end
-  end
 
 end
 
@@ -98,7 +92,7 @@ class PuppetModulePublisher < Jenkins::Tasks::Publisher
     end
 
     remote_head = StringIO.new
-    launcher.execute('git', 'ls-remote', 'origin' ,'HEAD', {:out => remote_head, :chdir => build.workspace} )
+    launcher.execute('git', 'ls-remote', 'origin' ,'HEAD', {:out => remote_head, :chdir => topdir(build)} )
     if remote_head.string.chomp.split.first != build.native.environment(listener)['GIT_COMMIT']
       listener.warn "Skip puppet module publication, not in remote HEAD"
       return

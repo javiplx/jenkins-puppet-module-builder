@@ -1,6 +1,9 @@
+require 'jenkins/utils'
+
 require 'fileutils'
 
 class DpkgPublisher < Jenkins::Tasks::Publisher
+  include Jenkins::Utils
 
   java_import Java.hudson.model.Result
 
@@ -9,7 +12,7 @@ class DpkgPublisher < Jenkins::Tasks::Publisher
   def perform(build, launcher, listener)
 
     remote_head = StringIO.new
-    launcher.execute('git', 'ls-remote', 'origin' ,'HEAD', {:out => remote_head, :chdir => build.workspace} )
+    launcher.execute('git', 'ls-remote', 'origin' ,'HEAD', {:out => remote_head, :chdir => topdir(build)} )
     if remote_head.string.split.first != build.native.environment(listener)['GIT_COMMIT']
       listener.warn "Skip publication, not in remote HEAD"
       return
