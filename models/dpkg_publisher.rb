@@ -2,6 +2,44 @@ require 'jenkins/utils'
 
 require 'fileutils'
 
+class DpkgBuilder < Jenkins::Tasks::Builder
+  include Jenkins::Utils
+
+  java_import Java.hudson.model.Result
+
+  display_name "(FON) Build debian package"
+
+  def perform(build, launcher, listener)
+
+    debiandir = topdir(build)
+    if debiandir == build.workspace
+      listener.warn "Cannot build debian packages on workspace root"
+      return
+    end
+
+    build_info = StringIO.new
+    rc = launcher.execute('dpkg-buildpackage', '-uc', '-b', '-rfakeroot', {:out => build_info, :chdir => debiandir} )
+    if rc != 0
+      listener.error "Cannot build debian package\n#{build_info.string}"
+      build.native.result = Result.fromString 'FAILURE'
+    end
+
+    build_line = build_info.string.lines.find{ |l| l.start_with? 'dpkg-deb: building package ' }.chomp.split
+
+    dpkg = /`\.\.\/(.*\.deb)'\./.match(build_line.last)[1]
+    listener.info "SUCCEED : package is \n#{dpkg}"
+
+    artifact_list = { dpkg => "gitclone/#{dpkg}" }
+
+    artifact_manager = build.native.artifact_manager
+    artifact_manager.archive(debiandir.parent.native, launcher.native, listener.native, artifact_list)
+
+    listener.info "Built puppet module #{module_file}"
+
+  end
+
+end
+
 class DpkgPublisher < Jenkins::Tasks::Publisher
   include Jenkins::Utils
 
