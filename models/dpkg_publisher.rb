@@ -32,6 +32,14 @@ class DpkgPublisher < Jenkins::Tasks::Publisher
   private
 
   def dpkg_artifacts(jenkins_project)
+
+    jenkins_project.artifacts.each do |artifact|
+      if artifact.file_name.end_with?('.deb')
+        return artifact.getFile
+      end
+    end
+    return unless jenkins_project.kind_of?(MavenModuleSetBuild)
+
     artifacts = jenkins_project.maven_artifacts
     return if artifacts.nil?
 
@@ -39,7 +47,7 @@ class DpkgPublisher < Jenkins::Tasks::Publisher
     dpkg = record.attachedArtifacts.first
     return if dpkg.nil?
 
-    file = dpkg.getFile(jenkins_project.getModuleLastBuilds.values.first)
+    dpkg.getFile(jenkins_project.getModuleLastBuilds.values.first)
   end
 
 end
