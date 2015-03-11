@@ -31,19 +31,19 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
       end
     end
 
+    # Tree cleanup
+    launcher.execute('rake', 'spec_clean', {:chdir => puppetdir} )
+    launcher.execute('rm', '-rf', 'pkg', '"="', 'Rakefile', 'spec', {:chdir => puppetdir} )
+
     if first = env_vars['GIT_PREVIOUS_SUCCESSFUL_COMMIT'] || env_vars['GIT_PREVIOUS_COMMIT']
       last = env_vars['GIT_COMMIT']
       commit_list = StringIO.new
-      launcher.execute('git', 'log', '--oneline' ,"#{first}..#{last}", '--', puppetsrc, {:out => commit_list, :chdir => topdir(build)} )
+      launcher.execute('git', 'log', '--oneline' ,"#{first}..#{last}", '--', "#{puppetsrc}/Modulefile", "#{puppetsrc}/manifests", "#{puppetsrc}/templates", {:out => commit_list, :chdir => topdir(build)} )
       if commit_list.string.lines.to_a.empty?
         listener.warn "No new commits under '#{puppetsrc}', skip module build"
         return
       end
     end
-
-    # Tree cleanup
-    launcher.execute('rake', 'spec_clean', {:chdir => puppetdir} )
-    launcher.execute('rm', '-rf', 'pkg', '"="', 'Rakefile', 'spec', {:chdir => puppetdir} )
 
     # Build module
     build_info = StringIO.new
