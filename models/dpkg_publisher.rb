@@ -56,13 +56,15 @@ class DpkgPublisher < Jenkins::Tasks::Publisher
       return
     end
 
-    file = dpkg_artifacts(build.native)
-    return if file.nil?
+    files = dpkg_artifacts(build.native)
+    return if files.empty?
 
-    FileUtils.cp file.canonical_path , "/tmp"
-    unless system( "update_repo.py --force /tmp/#{file.name}" )
-      listener.error "Cannot publish #{file.name}"
-      build.native.result = Result.fromString 'FAILURE'
+    files.each do |file|
+      FileUtils.cp file.canonical_path , "/tmp"
+      unless system( "update_repo.py --force /tmp/#{file.name}" )
+        listener.error "Cannot publish #{file.name}"
+        build.native.result = Result.fromString 'FAILURE'
+      end
     end
 
   end
