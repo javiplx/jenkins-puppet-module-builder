@@ -73,12 +73,8 @@ class DpkgPublisher < Jenkins::Tasks::Publisher
 
   def dpkg_artifacts(jenkins_project)
 
-    jenkins_project.artifacts.each do |artifact|
-      if artifact.file_name.end_with?('.deb')
-        return artifact.getFile
-      end
-    end
-    return unless jenkins_project.kind_of?(MavenModuleSetBuild)
+    artifacts = jenkins_project.artifacts.select{ |artifact| artifact.file_name.end_with?('.deb') }.collect{ |artifact| artifact.getFile }
+    return artifacts unless jenkins_project.kind_of?(MavenModuleSetBuild)
 
     artifacts = jenkins_project.maven_artifacts
     return if artifacts.nil?
