@@ -79,6 +79,9 @@ end
 class PuppetModulePublisher < Jenkins::Tasks::Publisher
 
   java_import Java.hudson.model.Result
+  java_import Java.hudson.model.Cause
+  java_import Java.hudson.model.ParametersAction
+  java_import Java.hudson.model.StringParameterValue
 
   display_name "(FON) Publish puppet module"
 
@@ -98,13 +101,34 @@ class PuppetModulePublisher < Jenkins::Tasks::Publisher
       return
     end
 
+    deployed = []
     build.native.artifacts.each do |artifact|
       if artifact.file_name.start_with?('fon-') &&
             artifact.file_name.end_with?('.tar.gz')
         listener.info "Publishing puppet module #{artifact.file.name}"
         FileUtils.cp artifact.file.canonical_path, '/var/lib/puppet-library'
+        deployed << artifact.file_name
       end
     end
+
+    return if deployed.empty?
+
+    cause = Cause::UpstreamCause.new(build.native)
+    deploy_project = Java.jenkins.model.Jenkins.instance.getItem('deploy-puppet')
+
+    deployed.each do |filename|
+      deploy_project.scheduleBuild( deploy_project.getQuietPeriod() , cause , get_actions(filename) )
+    end
+
+  end
+
+  private
+
+  def get_actions(filename)
+    moduleparts = /([a-z-]+)-([.0-9a-z-]+).tar.gz/.match filename
+    modulename = StringParameterValue.new( 'MODULENAME' , moduleparts[1] )
+    moduleversion = StringParameterValue.new( 'MODULEVERSION' , moduleparts[2] )
+    return ParametersAction.new( [ modulename , moduleversion ] )
   end
 
 end
