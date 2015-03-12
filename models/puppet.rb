@@ -77,6 +77,7 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
 end
 
 class PuppetModulePublisher < Jenkins::Tasks::Publisher
+  include Jenkins::Utils
 
   java_import Java.hudson.model.Result
   java_import Java.hudson.model.Cause
