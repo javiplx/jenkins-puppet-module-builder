@@ -126,7 +126,8 @@ class PuppetModulePublisher < Jenkins::Tasks::Publisher
   private
 
   def get_actions(filename)
-    moduleparts = /([a-z-]+)-([.0-9a-z-]+).tar.gz/.match filename
+    # The optional '7' is there for tomcat7 module
+    moduleparts = /([a-z-]+7?)-([.0-9a-z-]+).tar.gz/.match filename
     modulename = StringParameterValue.new( 'MODULENAME' , moduleparts[1] )
     moduleversion = StringParameterValue.new( 'MODULEVERSION' , moduleparts[2] )
     return ParametersAction.new( [ modulename , moduleversion ] )
