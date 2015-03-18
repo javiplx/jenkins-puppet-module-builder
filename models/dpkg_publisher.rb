@@ -1,6 +1,7 @@
 require 'jenkins/utils'
 
 require 'fileutils'
+require 'pathname'
 
 class DpkgBuilder < Jenkins::Tasks::Builder
   include Jenkins::Utils
@@ -13,7 +14,8 @@ class DpkgBuilder < Jenkins::Tasks::Builder
 
     debiandir = topdir(build)
     if debiandir == build.workspace
-      listener.warn "Cannot build debian packages on workspace root"
+      listener.fatal "Cannot build debian packages on workspace root"
+      build.native.result = Result.fromString 'FAILURE'
       return
     end
 
@@ -26,15 +28,19 @@ class DpkgBuilder < Jenkins::Tasks::Builder
 
     build_line = build_info.string.lines.find{ |l| l.start_with? 'dpkg-deb: building package ' }.chomp.split
 
-    dpkg = /`\.\.\/(.*\.deb)'\./.match(build_line.last)[1]
-    listener.info "SUCCEED : package is \n#{dpkg}"
+    # This will fail for sub-packages
+    dpkgname = /`\.\.\/(.*\.deb)'\./.match(build_line.last)[1]
 
-    artifact_list = { dpkg => "gitclone/#{dpkg}" }
+    dpkg = debiandir.parent + dpkgname
+    workspace = Pathname.new build.workspace.realpath
+    dpkgrealpath = Pathname.new(dpkg.realpath).relative_path_from(workspace)
+
+    artifact_list = { dpkgname => dpkgrealpath.to_s }
 
     artifact_manager = build.native.artifact_manager
     artifact_manager.archive(debiandir.parent.native, launcher.native, listener.native, artifact_list)
 
-    listener.info "Built puppet module #{module_file}"
+    listener.info "Built debian package #{dpkg}"
 
   end
 
@@ -76,14 +82,15 @@ class DpkgPublisher < Jenkins::Tasks::Publisher
     artifacts = jenkins_project.artifacts.select{ |artifact| artifact.file_name.end_with?('.deb') }.collect{ |artifact| artifact.getFile }
     return artifacts unless jenkins_project.kind_of?(MavenModuleSetBuild)
 
-    artifacts = jenkins_project.maven_artifacts
-    return if artifacts.nil?
+    last_build = jenkins_project.getModuleLastBuilds.values.first
 
-    record = artifacts.module_records.first
-    dpkg = record.attachedArtifacts.first
-    return if dpkg.nil?
+    jenkins_project.maven_artifacts.module_records.each do |record|
+      record.attachedArtifacts.each do |item|
+        artifacts << item.getFile(last_build) if item.fileName.end_with?('.deb')
+      end
+    end
 
-    dpkg.getFile(jenkins_project.getModuleLastBuilds.values.first)
+    artifacts
   end
 
 end
