@@ -24,10 +24,13 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
 
     # Run tests
     unless build.native.project.is_a? Java::HudsonMaven::MavenModuleSet
-      rc = launcher.execute('rake', 'test', {:chdir => puppetdir} )
+      rspec = StringIO.new
+      rc = launcher.execute('rake', 'test', {:out => rspec, :chdir => puppetdir} )
       if rc != 0
-        listener.warning "Errors on rspec examples"
-        build.native.result = Result.fromString 'UNSTABLE'
+        listener.error "RSpec failures:"
+        rspec.string.lines.each{ |line| listener.error line }
+        build.native.result = Result.fromString 'FAILURE'
+        return
       end
     end
 
@@ -95,6 +98,7 @@ class PuppetModulePublisher < Jenkins::Tasks::Publisher
       return
     end
 
+    # Once we set some RC tag on module version for branches, we can probably skip this test
     remote_head = StringIO.new
     launcher.execute('git', 'ls-remote', 'origin' ,'HEAD', {:out => remote_head, :chdir => topdir(build)} )
     if remote_head.string.chomp.split.first != build.native.environment(listener)['GIT_COMMIT']
