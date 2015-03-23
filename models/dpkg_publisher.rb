@@ -10,9 +10,15 @@ class DpkgBuilder < Jenkins::Tasks::Builder
 
   display_name "(FON) Build debian package"
 
+  attr_reader :srcdir
+
+  def initialize(opts)
+    @srcdir = opts['srcdir']
+  end
+
   def perform(build, launcher, listener)
 
-    debiandir = topdir(build)
+    debiandir = topdir(build) + srcdir
     if debiandir == build.workspace
       listener.fatal "Cannot build debian packages on workspace root"
       build.native.result = Result.fromString 'FAILURE'
@@ -40,9 +46,15 @@ class DpkgBuilder < Jenkins::Tasks::Builder
     artifact_manager = build.native.artifact_manager
     artifact_manager.archive(debiandir.parent.native, launcher.native, listener.native, artifact_list)
 
-    listener.info "Built debian package #{dpkg}"
+    listener.info "Built debian package #{dpkgname}"
 
   end
+
+  class DescriptorImpl < Jenkins::Model::DefaultDescriptor
+    attr_accessor :srcdir
+  end
+
+  describe_as Java.hudson.tasks.Builder, :with => DescriptorImpl
 
 end
 
@@ -51,7 +63,7 @@ class DpkgPublisher < Jenkins::Tasks::Publisher
 
   java_import Java.hudson.model.Result
 
-  display_name '(FON) Publish maven dpkg artifacts'
+  display_name '(FON) Publish dpkg artifacts'
 
   def perform(build, launcher, listener)
 
