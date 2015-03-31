@@ -65,6 +65,9 @@ class DpkgPublisher < Jenkins::Tasks::Publisher
 
   display_name '(FON) Publish dpkg artifacts'
 
+  java_import Java.hudson.model.Cause
+  java_import Java.hudson.maven.MavenModuleSetBuild
+
   def perform(build, launcher, listener)
 
     remote_head = StringIO.new
@@ -83,6 +86,11 @@ class DpkgPublisher < Jenkins::Tasks::Publisher
         listener.error "Cannot publish #{file.name}"
         build.native.result = Result.fromString 'FAILURE'
       end
+    end
+
+    if build.native.result == Result.fromString('SUCCESS') && files.any?
+        project = Java.jenkins.model.Jenkins.instance.getItem('run-functest')
+        project.scheduleBuild( 10 + 2 * project.getQuietPeriod() , Cause::UpstreamCause.new(build.native) )
     end
 
   end
