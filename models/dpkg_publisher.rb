@@ -41,7 +41,7 @@ class DpkgBuilder < Jenkins::Tasks::Builder
     workspace = Pathname.new build.workspace.realpath
     dpkgrealpath = Pathname.new(dpkg.realpath).relative_path_from(workspace)
 
-    artifact_list = { dpkgname => dpkgrealpath.to_s }
+    artifact_list = java.util.HashMap.new( dpkgname => dpkgrealpath.to_s )
 
     artifact_manager = build.native.artifact_manager
     artifact_manager.archive(debiandir.parent.native, launcher.native, listener.native, artifact_list)

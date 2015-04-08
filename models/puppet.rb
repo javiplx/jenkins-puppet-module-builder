@@ -62,7 +62,7 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
     module_file = Pathname.new build_line.last
     workspace = Pathname.new env_vars['WORKSPACE']
 
-    artifact_list = { module_file.basename.to_s => module_file.relative_path_from(workspace).to_s }
+    artifact_list = java.util.HashMap.new( module_file.basename.to_s => module_file.relative_path_from(workspace).to_s )
 
     artifact_manager = build.native.artifact_manager
     artifact_manager.archive(topdir(build).native, launcher.native, listener.native, artifact_list)
