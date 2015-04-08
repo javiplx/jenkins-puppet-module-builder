@@ -80,10 +80,12 @@ class DpkgPublisher < Jenkins::Tasks::Publisher
     files = dpkg_artifacts(build.native)
     return if files.empty?
 
+    archiver_out = StringIO.new
+    archiver = Jenkins::Launcher.new Java::Hudson::Launcher::LocalLauncher.new(listener.native)
     files.each do |file|
       FileUtils.cp file.canonical_path , "/tmp"
-      unless system( "update_repo.py --force /tmp/#{file.name}" )
-        listener.error "Cannot publish #{file.name}"
+      unless archiver.execute('update_repo.py', '--force', "/tmp/#{file.name}", {:out => archiver_out} ).zero?
+        listener.error "Cannot publish #{file.name}: #{archiver_out.string}"
         build.native.result = Result.fromString 'FAILURE'
       end
     end
