@@ -62,6 +62,7 @@ class DpkgPublisher < Jenkins::Tasks::Publisher
   include Jenkins::Utils
 
   java_import Java.hudson.model.Result
+  java_import Java.hudson.maven.MavenModuleSetBuild
 
   display_name '(FON) Publish dpkg artifacts'
 
@@ -119,37 +120,51 @@ end
 
 class RepreproPublisher < Jenkins::Tasks::Publisher
 
-  display_name "(FON) Publish packages on spices"
+  display_name "(FON) Publish resources on spices"
 
   java_import Java.org.jvnet.hudson.plugins.SSHBuildWrapper
-
-  attr_reader :pattern
-
-  def initialize(opts)
-    @pattern = opts['pattern']
-  end
 
   def perform(build, launcher, listener)
 
     env_vars = build.native.environment listener
     release = env_vars['PLATFORM_VERSION']
 
+    files = dpkg_artifacts(build.native)
+    return if files.empty?
+
+    filelist = files.collect do |file|
+      launcher.execute('scp', file.canonical_path, 'fondeb@spices.fon.ofi:/tmp')
+      "/tmp/#{file.name}"
+    end.join(' ')
+
     ssh_plugin = Java.jenkins.model.Jenkins.instance.descriptor(SSHBuildWrapper.java_class)
     ssh_site = ssh_plugin.sites.find{ |site| site.sitename == 'fondeb@spices.fon.ofi:22' }
 
     command = []
     command << ". /home/fondeb/.gpgea"
-    command << "reprepro -b /opt/repositories/deb-resources includedeb #{release} /tmp/#{env_vars['BUILD_TAG']}/#{pattern}"
-    command << "rm -rf /tmp/#{env_vars['BUILD_TAG']}/#{pattern}"
+    command << "reprepro -b /opt/repositories/deb-resources includedeb #{release} #{filelist}"
+    command << "rm -rf #{filelist}"
 
     ssh_site.executeCommand(listener.native.logger, command.join("\n"))
 
   end
 
-  class DescriptorImpl < Jenkins::Model::DefaultDescriptor
-    attr_accessor :pattern
-  end
+  private
 
-  describe_as Java.hudson.tasks.Publisher, :with => DescriptorImpl
+  def dpkg_artifacts(jenkins_project)
+
+    artifacts = jenkins_project.artifacts.select{ |artifact| artifact.file_name.end_with?('.deb') }.collect{ |artifact| artifact.getFile }
+    return artifacts unless jenkins_project.kind_of?(MavenModuleSetBuild)
+
+    last_build = jenkins_project.getModuleLastBuilds.values.first
+
+    jenkins_project.maven_artifacts.module_records.each do |record|
+      record.attachedArtifacts.each do |item|
+        artifacts << item.getFile(last_build) if item.fileName.end_with?('.deb')
+      end
+    end
+
+    artifacts
+  end
 
 end
