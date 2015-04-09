@@ -116,3 +116,40 @@ class DpkgPublisher < Jenkins::Tasks::Publisher
   end
 
 end
+
+class RepreproPublisher < Jenkins::Tasks::Publisher
+
+  display_name "(FON) Publish packages on spices"
+
+  java_import Java.org.jvnet.hudson.plugins.SSHBuildWrapper
+
+  attr_reader :pattern
+
+  def initialize(opts)
+    @pattern = opts['pattern']
+  end
+
+  def perform(build, launcher, listener)
+
+    env_vars = build.native.environment listener
+    release = env_vars['PLATFORM_VERSION']
+
+    ssh_plugin = Java.jenkins.model.Jenkins.instance.descriptor(SSHBuildWrapper.java_class)
+    ssh_site = ssh_plugin.sites.find{ |site| site.sitename == 'fondeb@spices.fon.ofi:22' }
+
+    command = []
+    command << ". /home/fondeb/.gpgea"
+    command << "reprepro -b /opt/repositories/deb-resources includedeb #{release} /tmp/#{env_vars['BUILD_TAG']}/#{pattern}"
+    command << "rm -rf /tmp/#{env_vars['BUILD_TAG']}/#{pattern}"
+
+    ssh_site.executeCommand(listener.native.logger, command.join("\n"))
+
+  end
+
+  class DescriptorImpl < Jenkins::Model::DefaultDescriptor
+    attr_accessor :pattern
+  end
+
+  describe_as Java.hudson.tasks.Publisher, :with => DescriptorImpl
+
+end

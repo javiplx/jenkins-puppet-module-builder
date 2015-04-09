@@ -1,0 +1,8 @@
+<%
+  f = taglib("/lib/form")
+  f.block do
+    f.entry :title => 'Files to publish', :field => 'pattern' do
+      f.textbox :default => "#{descriptor.pattern || '*.deb'}"
+    end
+  end
+%>
