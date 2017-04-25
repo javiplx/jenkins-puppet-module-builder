@@ -9,7 +9,7 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
   java_import Java.hudson.model.Result
   java_import Java.hudson.plugins.git.extensions.impl.RelativeTargetDirectory
 
-  display_name "(FON) Build puppet module"
+  display_name "Build puppet module"
 
   attr_reader :puppetsrc
 
@@ -23,7 +23,7 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
     puppetdir = topdir(build) + puppetsrc
 
     # Run tests
-    unless build.native.project.is_a? Java::HudsonMaven::MavenModuleSet
+    #unless build.native.project.is_a? Java::HudsonMaven::MavenModuleSet
       rspec = StringIO.new
       rc = launcher.execute('rake', 'test', {:out => rspec, :chdir => puppetdir} )
       if rc != 0
@@ -32,7 +32,7 @@ class PuppetModuleBuilder < Jenkins::Tasks::Builder
         build.native.result = Result.fromString 'FAILURE'
         return
       end
-    end
+    #end
 
     # Tree cleanup
     launcher.execute('rake', 'spec_clean', {:chdir => puppetdir} )
